@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <title>API App</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand-row">
+        <div class="brand-mark">A</div>
+        <div>
+          <div class="brand-title">API App</div>
+          <div class="brand-subtitle">Local API workspace</div>
+        </div>
+      </div>
+
+      <button class="primary-button full" id="newChatButton">+ New chat</button>
+      <div class="sidebar-section-label">Chats</div>
+      <div class="chat-list" id="chatList"></div>
+
+      <div class="sidebar-footer">
+        <button class="ghost-button full" id="settingsButton">Settings</button>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <button class="icon-button mobile-only" id="sidebarToggle" aria-label="Toggle sidebar">☰</button>
+        <div class="topbar-title-group">
+          <input id="chatTitle" class="chat-title-input" value="New chat" aria-label="Chat title" />
+          <div class="connection-state" id="connectionState">Not configured</div>
+        </div>
+        <div class="topbar-actions">
+          <select id="modelSelect" class="compact-select" aria-label="Model"></select>
+          <button class="ghost-button" id="clearChatButton">Clear</button>
+        </div>
+      </header>
+
+      <section class="messages" id="messages">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-orb"></div>
+          <h1>What are we building?</h1>
+          <p>Chat with any OpenAI-compatible API using your own key. Your key is never written into this repository or chat history.</p>
+          <div class="suggestion-grid">
+            <button class="suggestion">Design a Paper 1.21.11 plugin architecture</button>
+            <button class="suggestion">Debug this code and explain the root cause</button>
+            <button class="suggestion">Create a clean implementation plan</button>
+            <button class="suggestion">Review a feature for edge cases</button>
+          </div>
+        </div>
+      </section>
+
+      <footer class="composer-wrap">
+        <div class="composer">
+          <textarea id="promptInput" rows="1" placeholder="Message the model..." aria-label="Message"></textarea>
+          <div class="composer-bottom">
+            <span class="composer-hint">Enter to send · Shift+Enter for newline</span>
+            <div class="composer-actions">
+              <button class="ghost-button hidden" id="stopButton">Stop</button>
+              <button class="send-button" id="sendButton" aria-label="Send message">↑</button>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="setupModal">
+    <div class="modal-card setup-card">
+      <div class="modal-kicker">First launch</div>
+      <h2>Connect your API</h2>
+      <p>Enter an API key and endpoint. The key stays in this browser session unless you explicitly choose to remember it.</p>
+
+      <label class="field-label" for="apiKeyInput">API key</label>
+      <div class="secret-row">
+        <input id="apiKeyInput" type="password" autocomplete="off" placeholder="sk-..." />
+        <button class="ghost-button" id="toggleKeyButton" type="button">Show</button>
+      </div>
+
+      <label class="field-label" for="baseUrlInput">Base URL</label>
+      <input id="baseUrlInput" value="https://api.openai.com/v1" />
+
+      <label class="field-label" for="modelInput">Model</label>
+      <input id="modelInput" value="gpt-4.1-mini" placeholder="Model ID" />
+
+      <label class="checkbox-row">
+        <input id="rememberKeyInput" type="checkbox" />
+        <span>Remember key on this device</span>
+      </label>
+
+      <div class="modal-actions">
+        <button class="primary-button" id="saveSetupButton">Open workspace</button>
+      </div>
+      <div class="inline-error hidden" id="setupError"></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="settingsModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <div class="modal-kicker">Workspace</div>
+          <h2>Settings</h2>
+        </div>
+        <button class="icon-button" id="closeSettingsButton">✕</button>
+      </div>
+
+      <div class="settings-grid">
+        <div>
+          <label class="field-label" for="settingsApiKey">API key</label>
+          <input id="settingsApiKey" type="password" autocomplete="off" />
+        </div>
+        <div>
+          <label class="field-label" for="settingsBaseUrl">Base URL</label>
+          <input id="settingsBaseUrl" />
+        </div>
+        <div>
+          <label class="field-label" for="settingsModel">Default model</label>
+          <input id="settingsModel" />
+        </div>
+        <div>
+          <label class="field-label" for="temperatureInput">Temperature <span id="temperatureValue">0.7</span></label>
+          <input id="temperatureInput" type="range" min="0" max="2" step="0.1" value="0.7" />
+        </div>
+        <div>
+          <label class="field-label" for="maxTokensInput">Max output tokens</label>
+          <input id="maxTokensInput" type="number" min="64" max="32768" value="4096" />
+        </div>
+        <div class="full-span">
+          <label class="field-label" for="systemPromptInput">System prompt</label>
+          <textarea id="systemPromptInput" rows="5" placeholder="You are a helpful coding assistant..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-actions split">
+        <button class="danger-button" id="forgetKeyButton">Forget saved key</button>
+        <button class="primary-button" id="saveSettingsButton">Save settings</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
