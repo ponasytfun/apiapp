@@ -12,12 +12,53 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent
-HOST = "127.0.0.1"
+
+
+def load_env_file(path: Path) -> None:
+    """Load a simple .env file without third-party dependencies.
+
+    Existing process environment variables win over values from the file.
+    Supports KEY=value, optional export prefix, and quoted values.
+    """
+    if not path.is_file():
+        return
+
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[7:].strip()
+        if "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if not key:
+            continue
+
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+            value = value[1:-1]
+
+        os.environ.setdefault(key, value)
+
+
+load_env_file(ROOT / ".env")
+
+HOST = os.environ.get("APIAPP_HOST", "127.0.0.1")
 PORT = int(os.environ.get("APIAPP_PORT", "8765"))
+ENV_API_KEY = os.environ.get("APIAPP_API_KEY", "").strip()
+ENV_BASE_URL = os.environ.get("APIAPP_BASE_URL", "https://integrate.api.nvidia.com/v1").strip().rstrip("/")
+ENV_MODEL = os.environ.get("APIAPP_MODEL", "deepseek-ai/deepseek-v4-pro").strip()
+ENV_TEMPERATURE = float(os.environ.get("APIAPP_TEMPERATURE", "1"))
+ENV_TOP_P = float(os.environ.get("APIAPP_TOP_P", "0.95"))
+ENV_MAX_TOKENS = int(os.environ.get("APIAPP_MAX_TOKENS", "16384"))
+ENV_THINKING = os.environ.get("APIAPP_THINKING", "false").strip().lower() in {"1", "true", "yes", "on"}
 
 
 class AppHandler(BaseHTTPRequestHandler):
-    server_version = "APIApp/1.0"
+    server_version = "APIApp/1.1"
 
     def log_message(self, format: str, *args: Any) -> None:
         # Keep the terminal readable. Errors are still surfaced to the client.
@@ -35,7 +76,22 @@ class AppHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         path = self.path.split("?", 1)[0]
         if path == "/api/health":
-            self._send_json(200, {"ok": True})
+            self._send_json(200, {"ok": True, "envConfigured": bool(ENV_API_KEY)})
+            return
+
+        if path == "/api/config":
+            self._send_json(
+                200,
+                {
+                    "hasEnvApiKey": bool(ENV_API_KEY),
+                    "baseUrl": ENV_BASE_URL,
+                    "model": ENV_MODEL,
+                    "temperature": ENV_TEMPERATURE,
+                    "topP": ENV_TOP_P,
+                    "maxTokens": ENV_MAX_TOKENS,
+                    "thinking": ENV_THINKING,
+                },
+            )
             return
 
         if path == "/":
@@ -72,16 +128,22 @@ class AppHandler(BaseHTTPRequestHandler):
             self._send_json(400, {"error": f"Invalid request: {exc}"})
             return
 
-        api_key = str(payload.pop("apiKey", "")).strip()
-        base_url = str(payload.pop("baseUrl", "https://api.openai.com/v1")).strip().rstrip("/")
+        api_key = str(payload.pop("apiKey", "")).strip() or ENV_API_KEY
+        base_url = str(payload.pop("baseUrl", "")).strip().rstrip("/") or ENV_BASE_URL
         if not api_key:
-            self._send_json(400, {"error": "API key is required"})
+            self._send_json(400, {"error": "API key is required. Add it in the app or set APIAPP_API_KEY in .env"})
             return
         if not base_url.startswith(("http://", "https://")):
             self._send_json(400, {"error": "Base URL must start with http:// or https://"})
             return
 
+        payload["model"] = str(payload.get("model") or ENV_MODEL)
+        payload["temperature"] = float(payload.get("temperature", ENV_TEMPERATURE))
+        payload["top_p"] = float(payload.get("top_p", ENV_TOP_P))
+        payload["max_tokens"] = int(payload.get("max_tokens", ENV_MAX_TOKENS))
         payload["stream"] = True
+        payload.setdefault("chat_template_kwargs", {"thinking": ENV_THINKING})
+
         target = f"{base_url}/chat/completions"
         request = urllib.request.Request(
             target,
@@ -90,7 +152,7 @@ class AppHandler(BaseHTTPRequestHandler):
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
                 "Accept": "text/event-stream",
-                "User-Agent": "APIApp/1.0",
+                "User-Agent": "APIApp/1.1",
             },
             method="POST",
         )
@@ -132,6 +194,9 @@ def main() -> None:
     server = ThreadingHTTPServer((HOST, PORT), AppHandler)
     url = f"http://{HOST}:{PORT}"
     print(f"API App running at {url}")
+    print(f"Provider: {ENV_BASE_URL}")
+    print(f"Model: {ENV_MODEL}")
+    print(f".env API key loaded: {'yes' if ENV_API_KEY else 'no'}")
     print("Close this window or press Ctrl+C to stop it.")
     threading.Timer(0.7, lambda: webbrowser.open(url)).start()
     try:
