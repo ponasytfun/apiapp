@@ -3,12 +3,12 @@ mod guard;
 mod provider;
 mod tools;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use axum::{
     body::Body,
     extract::State,
     http::{header, HeaderValue, StatusCode},
-    response::{IntoResponse, Response},
+    response::{Html, IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
@@ -21,7 +21,7 @@ use serde_json::Value;
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 use tokio::sync::RwLock;
 use tools::{ToolRequest, ToolRuntime};
-use tower_http::{services::ServeDir, trace::TraceLayer};
+use tower_http::trace::TraceLayer;
 use tracing::{error, info};
 
 #[derive(Clone)]
@@ -70,6 +70,10 @@ async fn main() -> Result<()> {
     }
 
     let app = Router::new()
+        .route("/", get(index))
+        .route("/index.html", get(index))
+        .route("/app.js", get(app_js))
+        .route("/styles.css", get(styles_css))
         .route("/api/health", get(health))
         .route("/api/config", get(get_config))
         .route("/api/chat", post(chat))
@@ -77,7 +81,6 @@ async fn main() -> Result<()> {
         .route("/api/workspace", post(set_workspace))
         .route("/api/references", get(list_references).post(add_reference))
         .route("/api/tools/execute", post(execute_tool))
-        .nest_service("/", ServeDir::new("." ).append_index_html_on_directories(true))
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 
@@ -86,6 +89,31 @@ async fn main() -> Result<()> {
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).await?;
     Ok(())
+}
+
+async fn index() -> Response {
+    match tokio::fs::read_to_string("index.html").await {
+        Ok(body) => Html(body).into_response(),
+        Err(err) => json_error(StatusCode::NOT_FOUND, err.into()),
+    }
+}
+
+async fn app_js() -> Response {
+    static_asset("app.js", "application/javascript; charset=utf-8").await
+}
+
+async fn styles_css() -> Response {
+    static_asset("styles.css", "text/css; charset=utf-8").await
+}
+
+async fn static_asset(path: &str, content_type: &'static str) -> Response {
+    match tokio::fs::read(path).await {
+        Ok(body) => (
+            [(header::CONTENT_TYPE, content_type), (header::CACHE_CONTROL, "no-cache")],
+            body,
+        ).into_response(),
+        Err(err) => json_error(StatusCode::NOT_FOUND, err.into()),
+    }
 }
 
 async fn health() -> Json<Value> {
@@ -109,9 +137,7 @@ async fn get_config(State(state): State<AppState>) -> Json<Value> {
 
 async fn chat(State(state): State<AppState>, Json(mut request): Json<ProviderRequest>) -> Response {
     let config = state.config.read().await.clone();
-    if request.api_key.trim().is_empty() {
-        request.api_key = config.provider.api_key;
-    }
+    if request.api_key.trim().is_empty() { request.api_key = config.provider.api_key; }
     if request.base_url.trim().is_empty() { request.base_url = config.provider.base_url; }
     if request.model.trim().is_empty() { request.model = config.provider.model; }
 
