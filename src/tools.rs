@@ -3,7 +3,7 @@ use anyhow::{bail, Context, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::{path::PathBuf, process::Stdio, sync::Arc};
+use std::{process::Stdio, sync::Arc};
 use tokio::{fs, process::Command, time::{timeout, Duration}};
 use walkdir::WalkDir;
 
@@ -76,7 +76,7 @@ impl ToolRuntime {
         let root = self.guard.authorize_read(path)?;
         let pattern = Regex::new(&regex::escape(query))?;
         let mut matches = Vec::new();
-        for entry in WalkDir::new(root).follow_links(false).into_iter().filter_map(Result::ok) {
+        for entry in WalkDir::new(root).follow_links(false).into_iter().filter_map(|entry| entry.ok()) {
             if !entry.file_type().is_file() { continue; }
             if entry.metadata().map(|m| m.len() > 1_000_000).unwrap_or(true) { continue; }
             let Ok(content) = std::fs::read_to_string(entry.path()) else { continue; };
