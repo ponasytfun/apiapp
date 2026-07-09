@@ -19,14 +19,14 @@ if %errorlevel% neq 0 (
   exit /b 1
 )
 
-echo [3/4] Building API-App.exe...
+echo [3/4] Building API-App.exe with low-overrefusal preset...
 python -m PyInstaller ^
   --noconfirm ^
   --clean ^
   --onefile ^
   --windowed ^
   --name API-App ^
-  desktop_app.py
+  desktop_app_relaxed.py
 
 if %errorlevel% neq 0 (
   echo Build failed.
@@ -39,4 +39,5 @@ echo.
 echo Executable created at:
 echo %CD%\dist\API-App.exe
 echo.
+echo The default assistant preset is tuned to avoid unnecessary refusals on benign dual-use coding tasks.
 pause
