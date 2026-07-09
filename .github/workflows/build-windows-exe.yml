@@ -5,9 +5,10 @@ on:
   push:
     branches:
       - main
-      - agent/native-windows-app
+      - agent/reduce-overrefusals
     paths:
       - desktop_app.py
+      - desktop_app_relaxed.py
       - build_exe.bat
       - .github/workflows/build-windows-exe.yml
 
@@ -35,7 +36,7 @@ jobs:
           --onefile
           --windowed
           --name API-App
-          desktop_app.py
+          desktop_app_relaxed.py
 
       - name: Upload executable
         uses: actions/upload-artifact@v4
