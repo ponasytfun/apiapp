@@ -5,3 +5,8 @@ __pycache__/
 !.env.example
 .DS_Store
 Thumbs.db
+
+# PyInstaller output
+build/
+dist/
+*.spec
