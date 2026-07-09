@@ -1,0 +1,30 @@
+[package]
+name = "apiapp"
+version = "2.0.0"
+edition = "2021"
+description = "Local-first Codex-style coding agent with pluggable model APIs"
+license = "Apache-2.0"
+
+[dependencies]
+anyhow = "1"
+axum = { version = "0.8", features = ["json", "macros"] }
+bytes = "1"
+dotenvy = "0.15"
+futures-util = "0.3"
+regex = "1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1"
+tower-http = { version = "0.6", features = ["fs", "trace", "cors"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+url = "2"
+uuid = { version = "1", features = ["v4", "serde"] }
+walkdir = "2"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
